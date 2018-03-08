@@ -45,6 +45,8 @@ public class EnvironmentSubstitutor implements ConfigurationSourceProvider {
     /**
      * Create a new instance.
      *
+     * @param namespace
+     *      the namespace of allowed configuration overrides.
      * @param delegate
      *      the underlying {@link ConfigurationSourceProvider}.
      */
