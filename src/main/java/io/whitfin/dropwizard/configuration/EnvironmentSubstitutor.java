@@ -156,6 +156,7 @@ public class EnvironmentSubstitutor implements ConfigurationSourceProvider {
         return prefix + "_" + UPPER_CAMEL
                 .to(LOWER_UNDERSCORE, key)
                 .replace('.', '_')
+                .replace('-', '_')
                 .toUpperCase();
     }
 

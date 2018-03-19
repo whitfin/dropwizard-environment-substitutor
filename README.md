@@ -53,6 +53,6 @@ config:
         key: "value"
 ```
 
-If you read this in, `my_config.my_object.key == "value"`; however you can set the environment variable `MY_APP_CONFIG_OBJECT_KEY` to change it. For example `MY_APP_CONFIG_OBJECT_KEY=test` would make the value equal to `"test"`. This pattern is followed throughout; upper case the field in the configuration file and swap out any `.` for `_`, and you use a simple integer to array position.
+If you read this in, `my_config.my_object.key == "value"`; however you can set the environment variable `MY_APP_CONFIG_OBJECT_KEY` to change it. For example `MY_APP_CONFIG_OBJECT_KEY=test` would make the value equal to `"test"`. This pattern is followed throughout; upper case the field in the configuration file and swap out any `.` or `-` for `_`, and you use a simple integer to array position.
 
 For any other functionality, please see the documentation or the code itself.
