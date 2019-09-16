@@ -51,9 +51,23 @@ public class EnvironmentSubstitutor implements ConfigurationSourceProvider {
      *      the underlying {@link ConfigurationSourceProvider}.
      */
     public EnvironmentSubstitutor(String namespace, ConfigurationSourceProvider delegate) {
-        this.delegate = Objects.requireNonNull(delegate);
+        this(namespace, delegate, Jackson.newObjectMapper(new YAMLFactory()));
+    }
+
+    /**
+     * Create a new instance.
+     *
+     * @param namespace
+     *      the namespace of allowed configuration overrides.
+     * @param delegate
+     *      the underlying {@link ConfigurationSourceProvider}.
+     * @param mapper
+     *      a custom {@link ObjectMapper} to use when reading configuration.
+     */
+    public EnvironmentSubstitutor(String namespace, ConfigurationSourceProvider delegate, ObjectMapper mapper) {
         this.namespace = Objects.requireNonNull(namespace).toUpperCase();
-        this.mapper = Jackson.newObjectMapper(new YAMLFactory());
+        this.delegate = Objects.requireNonNull(delegate);
+        this.mapper = Objects.requireNonNull(mapper);
     }
 
     /**
@@ -61,10 +75,10 @@ public class EnvironmentSubstitutor implements ConfigurationSourceProvider {
      */
     @Override
     public InputStream open(String path) throws IOException {
-        try (final InputStream in = delegate.open(path)) {
-            final ObjectNode config = mapper.readValue(in, ObjectNode.class);
+        try (final InputStream in = this.delegate.open(path)) {
+            final ObjectNode config = this.mapper.readValue(in, ObjectNode.class);
             replace(config, this.namespace);
-            return new ByteArrayInputStream(mapper.writeValueAsBytes(config));
+            return new ByteArrayInputStream(this.mapper.writeValueAsBytes(config));
         }
     }
 
@@ -107,7 +121,13 @@ public class EnvironmentSubstitutor implements ConfigurationSourceProvider {
             replace(node.path(i), path, new Overrider() {
                 @Override
                 public void accept(String override) {
-                    node.set(k, TextNode.valueOf(override));
+                    JsonNode value;
+                    try {
+                        value = mapper.readTree(override);
+                    } catch (IOException e) {
+                        value = TextNode.valueOf(override);
+                    }
+                    node.set(k, value);
                 }
             });
         }
