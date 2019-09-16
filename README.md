@@ -1,4 +1,4 @@
-# dropwizard-environment-substitutor
+# dropwizard-environment-substitutor [![Build Status](https://travis-ci.org/whitfin/dropwizard-environment-substitutor.svg?branch=master)](https://travis-ci.org/whitfin/dropwizard-environment-substitutor)
 
 This module provides a basic way to allow overrides of all configuration at startup via environment variables. It's useful if you ship to multiple environments using things like Docker and might need to change on a whim.
 
