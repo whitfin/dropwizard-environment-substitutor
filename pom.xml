@@ -59,6 +59,16 @@
             <version>1.2.2</version>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>io.whitfin</groupId>
+            <artifactId>dot-notes</artifactId>
+            <version>3.1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>io.whitfin</groupId>
+            <artifactId>dottie</artifactId>
+            <version>1.0.0</version>
+        </dependency>
     </dependencies>
 
     <build>

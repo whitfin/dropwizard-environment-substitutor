@@ -2,23 +2,20 @@ package io.whitfin.dropwizard.configuration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.zackehh.dotnotes.DotNotes;
+import com.zackehh.dotnotes.ParseException;
 import io.dropwizard.configuration.ConfigurationSourceProvider;
 import io.dropwizard.jackson.Jackson;
+import io.whitfin.dottie.joiner.NotationJoiner;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
-
-import static com.google.common.base.CaseFormat.LOWER_UNDERSCORE;
-import static com.google.common.base.CaseFormat.UPPER_CAMEL;
-
 
 /**
  * A delegating {@link ConfigurationSourceProvider} which replaces variables
@@ -75,122 +72,68 @@ public class EnvironmentSubstitutor implements ConfigurationSourceProvider {
      */
     @Override
     public InputStream open(String path) throws IOException {
+        // use the delegate to open the base configuration
         try (final InputStream in = this.delegate.open(path)) {
+            // read in the configuration object and construct a notation joiner
             final ObjectNode config = this.mapper.readValue(in, ObjectNode.class);
-            replace(config, this.namespace);
+            final NotationJoiner joiner = new NotationJoiner();
+
+            // iterate all pairs of properties in the process environment
+            for (Map.Entry<String, String> prop : System.getenv().entrySet()) {
+                // pull the next key/value pair
+                final String key = prop.getKey();
+                final String value = prop.getValue();
+
+                // skip any keys outside of the namespace
+                if (!key.startsWith(this.namespace + "_")) {
+                    continue;
+                }
+
+                // iterate all segments of the key (denoted by the "_" character in the env)
+                for (String segment : key.substring(this.namespace.length() + 1).split("_")) {
+                    // lower-case the segment value
+                    segment = segment.toLowerCase();
+
+                    // parse the key segment
+                    JsonNode parsed;
+                    try {
+                        parsed = this.mapper.readTree(segment);
+                    } catch (IOException e) {
+                        parsed = TextNode.valueOf(segment);
+                    }
+
+                    // append a new textual field
+                    if (parsed.isTextual()) {
+                        joiner.append(parsed.asText());
+                    }
+
+                    // append a numeric index
+                    if (parsed.isNumber()) {
+                        joiner.append(parsed.asInt());
+                    }
+                }
+
+                // attempt to parse the value
+                JsonNode parsedValue;
+                try {
+                    parsedValue = this.mapper.readTree(value);
+                } catch (IOException e) {
+                    parsedValue = TextNode.valueOf(value);
+                }
+
+                // attempt to set the new value
+                try {
+                    DotNotes.create(config, joiner.toString(), parsedValue);
+                } catch (ParseException e) {
+                    // we're unable to substitute for some reason?
+                }
+
+                // re-use the joiner
+                joiner.reset();
+            }
+
+            // turn the updated node back into a byte stream for continuity
             return new ByteArrayInputStream(this.mapper.writeValueAsBytes(config));
         }
-    }
-
-    /**
-     * Replaces all overridden properties from the environment.
-     *
-     * @param node
-     *      the current map node to replace within.
-     * @param prefix
-     *      the prefix of the path taken so far.
-     */
-    private void replace(final ObjectNode node, String prefix) {
-        for (Iterator<Map.Entry<String, JsonNode>> it = node.fields(); it.hasNext();) {
-            Map.Entry<String, JsonNode> field = it.next();
-
-            final String key = field.getKey();
-            String path = createPrefix(key, prefix);
-
-            replace(field.getValue(), path, new Overrider() {
-                @Override
-                public void accept(String override) {
-                    node.put(key, override);
-                }
-            });
-        }
-    }
-
-    /**
-     * Replaces all overridden properties from the environment.
-     *
-     * @param node
-     *      the current list node to replace within.
-     * @param prefix
-     *      the prefix of the path taken so far.
-     */
-    private void replace(final ArrayNode node, String prefix) {
-        for (int i = 0, j = node.size(); i < j; i++) {
-            final int k = i;
-            String path = createPrefix("" + i, prefix);
-            replace(node.path(i), path, new Overrider() {
-                @Override
-                public void accept(String override) {
-                    JsonNode value;
-                    try {
-                        value = mapper.readTree(override);
-                    } catch (IOException e) {
-                        value = TextNode.valueOf(override);
-                    }
-                    node.set(k, value);
-                }
-            });
-        }
-    }
-
-    /**
-     * Replaces all overridden properties from the environment.
-     *
-     * @param node
-     *      the current node being processed.
-     * @param path
-     *      the path to the current node.
-     * @param overrider
-     *      an override to apply on value nodes.
-     */
-    private void replace(JsonNode node, String path, Overrider overrider) {
-        if (node.isObject()) {
-            replace((ObjectNode) node, path);
-            return;
-        }
-
-        if (node.isArray()) {
-            replace((ArrayNode) node, path);
-            return;
-        }
-
-        String override = System.getenv(path);
-        if (override == null) {
-            return;
-        }
-
-        overrider.accept(override);
-    }
-
-    /**
-     * Generates a path from a key and prefix.
-     *
-     * @param key
-     *      the key being processed.
-     * @param prefix
-     *      the prefix to apply to the key.
-     * @return
-     *      a String prefix to continue using.
-     */
-    private String createPrefix(String key, String prefix) {
-        return prefix + "_" + UPPER_CAMEL
-                .to(LOWER_UNDERSCORE, key)
-                .replace('.', '_')
-                .replace('-', '_')
-                .toUpperCase();
-    }
-
-    /**
-     * Small consumer interface for JDK7.
-     */
-    private interface Overrider {
-
-        /**
-         * Accepts an override as a String.
-         *
-         * @param override
-         *      the overridden value to use.
-         */
-        void accept(String override);
     }
 }
