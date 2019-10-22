@@ -12,7 +12,7 @@ This library is available on Central, and so can be used via Maven and/or Gradle
 <dependency>
     <groupId>io.whitfin</groupId>
     <artifactId>dropwizard-environment-substitutor</artifactId>
-    <version>1.0.1</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
