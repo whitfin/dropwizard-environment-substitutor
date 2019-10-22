@@ -124,7 +124,7 @@ public class EnvironmentSubstitutor implements ConfigurationSourceProvider {
                 // attempt to set the new value
                 try {
                     DotNotes.create(config, joiner.toString(), parsedValue);
-                } catch (ParseException e) {
+                } catch (Exception e) {
                     // we're unable to substitute for some reason?
                 }
 
